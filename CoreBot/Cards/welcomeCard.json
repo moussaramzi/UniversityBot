@@ -1,0 +1,43 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.0",
+  "body": [
+    {
+      "type": "Image",
+      "url": "https://i.imgur.com/YEN6J83.png",
+      "size": "stretch"
+    },
+    {
+      "type": "TextBlock",
+      "spacing": "medium",
+      "size": "large",
+      "weight": "bolder",
+      "text": "Welcome to University Bot!",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "size": "default",
+      "text": "Your personal assistant for managing university courses, schedules, and more. How can I assist you today?",
+      "wrap": true
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Submit",
+      "title": "View Courses",
+      "data": { "action": "viewCourses" }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "Enroll in a Course",
+      "data": { "action": "enrollCourse" }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "Contact Support",
+      "data": { "action": "contactSupport" }
+    }
+  ]
+}
