@@ -31,10 +31,6 @@ namespace UniversityBot.Dialogs
             _recognizer = recognizer;
 
             AddDialog(new TextPrompt(nameof(TextPrompt)));
-            AddDialog(getCoursesDialog);
-            AddDialog(enrollStudentDialog);
-            //AddDialog(getScheduleDialog);
-            //AddDialog(getEventsDialog);
 
             var waterfallSteps = new WaterfallStep[]
             {
@@ -44,6 +40,11 @@ namespace UniversityBot.Dialogs
             };
 
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
+
+            AddDialog(getCoursesDialog);
+            AddDialog(enrollStudentDialog);
+            //AddDialog(getScheduleDialog);
+            //AddDialog(getEventsDialog);
 
             InitialDialogId = nameof(WaterfallDialog);
         }

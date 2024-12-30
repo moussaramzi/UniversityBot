@@ -12,38 +12,53 @@ namespace CoreBot.Cards
     {
         public static async Task<Attachment> CreateCardAttachmentAsync()
         {
-            var courses = await CourseDataService.GetCoursesAsync();
+            // Retrieve course data
+            var courses = await CourseDataService.GetCoursesAsync() ?? new List<Course>();
 
-            var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 0))
+            // Create the adaptive card
+            var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 3))
             {
                 Body = new List<AdaptiveElement>
-                {
-                    // Title TextBlock
-                    new AdaptiveTextBlock
-                    {
-                        Text = "Available Courses",
-                        Weight = AdaptiveTextWeight.Bolder,
-                        Size = AdaptiveTextSize.Large
-                    },
-                    // Subtitle TextBlock
-                    new AdaptiveTextBlock
-                    {
-                        Text = "Here are the courses you can enroll in:",
-                        Wrap = true
-                    },
-                    // List courses
-                    new AdaptiveFactSet
-                    {
-                        Facts = courses.Select(course => new AdaptiveFact
-                        {
-                            Title = "-",
-                            Value = course.Title
-                        }).ToList()
-                    }
-                }
+        {
+            // Title
+            new AdaptiveTextBlock
+            {
+                Text = "Available Courses",
+                Weight = AdaptiveTextWeight.Bolder,
+                Size = AdaptiveTextSize.Large
+            },
+            // Subtitle
+            new AdaptiveTextBlock
+            {
+                Text = "Here are the courses you can enroll in:",
+                Wrap = true
+            }
+        }
             };
 
-            // Create an attachment
+            // Add course list or fallback message
+            if (!courses.Any())
+            {
+                card.Body.Add(new AdaptiveTextBlock
+                {
+                    Text = "No courses are currently available.",
+                    Weight = AdaptiveTextWeight.Lighter,
+                    Wrap = true
+                });
+            }
+            else
+            {
+                card.Body.Add(new AdaptiveContainer
+                {
+                    Items = courses.Select(course => new AdaptiveTextBlock
+                    {
+                        Text = $"• {course.Title}",
+                        Wrap = true
+                    }).ToList<AdaptiveElement>()
+                });
+            }
+
+            // Create an adaptive card attachment
             var adaptiveCardAttachment = new Attachment
             {
                 ContentType = "application/vnd.microsoft.card.adaptive",
@@ -52,5 +67,6 @@ namespace CoreBot.Cards
 
             return adaptiveCardAttachment;
         }
+
     }
 }
