@@ -7,6 +7,7 @@ using Microsoft.Bot.Connector.Authentication;
 using Microsoft.Bot.Schema;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 
 namespace CoreBot
 {
@@ -18,34 +19,38 @@ namespace CoreBot
             OnTurnError = async (turnContext, exception) =>
             {
                 // Log any leaked exception from the application.
-                logger.LogError(exception, $"[OnTurnError] unhandled error : {exception.Message}");
+                logger.LogError(exception, $"[OnTurnError] unhandled error: {exception.Message}\nStackTrace: {exception.StackTrace}\nInnerException: {exception.InnerException?.Message}");
 
                 // Send a message to the user
                 var errorMessageText = "The bot encountered an error or bug.";
                 var errorMessage = MessageFactory.Text(errorMessageText, errorMessageText, InputHints.ExpectingInput);
                 await turnContext.SendActivityAsync(errorMessage);
 
-                errorMessageText = "To continue to run this bot, please fix the bot source code.";
-                errorMessage = MessageFactory.Text(errorMessageText, errorMessageText, InputHints.ExpectingInput);
-                await turnContext.SendActivityAsync(errorMessage);
+                var retryMessageText = "Please try again, or ask something else while we look into this issue.";
+                var retryMessage = MessageFactory.Text(retryMessageText, retryMessageText, InputHints.ExpectingInput);
+                await turnContext.SendActivityAsync(retryMessage);
 
                 if (conversationState != null)
                 {
                     try
                     {
-                        // Delete the conversationState for the current conversation to prevent the
-                        // bot from getting stuck in a error-loop caused by being in a bad state.
-                        // ConversationState should be thought of as similar to "cookie-state" in a Web pages.
                         await conversationState.DeleteAsync(turnContext);
                     }
                     catch (Exception e)
                     {
-                        logger.LogError(e, $"Exception caught on attempting to Delete ConversationState : {e.Message}");
+                        logger.LogError(e, $"Exception caught while attempting to delete conversation state: {e.Message}");
                     }
+                }
+                else
+                {
+                    logger.LogWarning("ConversationState is null; skipping deletion.");
                 }
 
                 // Send a trace activity, which will be displayed in the Bot Framework Emulator
-                await turnContext.TraceActivityAsync("OnTurnError Trace", exception.Message, "https://www.botframework.com/schemas/error", "TurnError");
+                await turnContext.TraceActivityAsync("OnTurnError Trace",
+                    $"Error: {exception.Message}\nUser Input: {turnContext.Activity.Text}\nConversation ID: {turnContext.Activity.Conversation.Id}",
+                    "https://www.botframework.com/schemas/error",
+                    "TurnError");
             };
         }
     }

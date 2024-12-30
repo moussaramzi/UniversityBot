@@ -56,9 +56,37 @@ namespace UniversityBot.Dialogs
                 throw new InvalidOperationException("Error: Recognizer not configured properly.");
             }
 
+            // Check if the activity contains a value from a submitted action
+            if (stepContext.Context.Activity.Value is IDictionary<string, object> value && value.ContainsKey("action"))
+            {
+                var action = value["action"]?.ToString();
+
+                switch (action)
+                {
+                    case "viewCourses":
+                        _logger.LogInformation("User selected 'View Courses'");
+                        return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), cancellationToken: cancellationToken);
+
+                    case "enrollCourse":
+                        _logger.LogInformation("User selected 'Enroll in a Course'");
+                        return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), cancellationToken: cancellationToken);
+
+                    case "contactSupport":
+                        _logger.LogInformation("User selected 'Contact Support'");
+                        await stepContext.Context.SendActivityAsync("Support team is here to assist you. Please describe your issue.", cancellationToken: cancellationToken);
+                        return await stepContext.NextAsync(null, cancellationToken);
+
+                    default:
+                        await stepContext.Context.SendActivityAsync("Sorry, I didn't understand that action.", cancellationToken: cancellationToken);
+                        return await stepContext.NextAsync(null, cancellationToken);
+                }
+            }
+
+            // Default prompt if no action is detected
             var messageText = stepContext.Options?.ToString() ?? "How can I assist you today?";
             return await stepContext.PromptAsync(nameof(TextPrompt), new PromptOptions { Prompt = MessageFactory.Text(messageText, messageText, InputHints.ExpectingInput) }, cancellationToken);
         }
+
 
         private async Task<DialogTurnResult> ActionActStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -84,15 +112,19 @@ namespace UniversityBot.Dialogs
                 //    return await stepContext.BeginDialogAsync(nameof(GetEventsDialog), cancellationToken: cancellationToken);
 
                 default:
-                    await stepContext.Context.SendActivityAsync(MessageFactory.Text("Sorry, I didn't understand that."), cancellationToken);
-                    return await stepContext.NextAsync(null, cancellationToken);
+                    var unknownMessage = "Sorry, I didn't understand that. You can ask me about courses, enrollment, or other university services.";
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Text(unknownMessage), cancellationToken);
+                    return await stepContext.EndDialogAsync(null, cancellationToken);
             }
         }
 
         private async Task<DialogTurnResult> FinalStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var promptMessage = "What else can I help you with?";
-            return await stepContext.ReplaceDialogAsync(InitialDialogId, promptMessage, cancellationToken);
+            await stepContext.Context.SendActivityAsync(MessageFactory.Text(promptMessage), cancellationToken);
+
+            // End the current dialog so MainDialog can start fresh based on user input
+            return await stepContext.EndDialogAsync(null, cancellationToken);
         }
     }
 }

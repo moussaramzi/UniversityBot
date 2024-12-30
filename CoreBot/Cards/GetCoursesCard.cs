@@ -12,61 +12,75 @@ namespace CoreBot.Cards
     {
         public static async Task<Attachment> CreateCardAttachmentAsync()
         {
-            // Retrieve course data
-            var courses = await CourseDataService.GetCoursesAsync() ?? new List<Course>();
+            var courses = new List<Course>();
+            try
+            {
+                courses = await CourseDataService.GetCoursesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching courses: {ex.Message}");
+                throw; // Optionally log and rethrow to debug
+            }
 
-            // Create the adaptive card
-            var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 3))
+            if (courses == null || !courses.Any())
+            {
+                // Handle no courses case
+                var noCoursesCard = new AdaptiveCard(new AdaptiveSchemaVersion(1, 0))
+                {
+                    Body = new List<AdaptiveElement>
+            {
+                new AdaptiveTextBlock
+                {
+                    Text = "No courses are available at this time.",
+                    Weight = AdaptiveTextWeight.Bolder,
+                    Size = AdaptiveTextSize.Large,
+                    Wrap = true
+                }
+            }
+                };
+
+                return new Attachment
+                {
+                    ContentType = "application/vnd.microsoft.card.adaptive",
+                    Content = JObject.FromObject(noCoursesCard)
+                };
+            }
+
+            // Normal card creation logic
+            var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 0))
             {
                 Body = new List<AdaptiveElement>
         {
-            // Title
             new AdaptiveTextBlock
             {
                 Text = "Available Courses",
                 Weight = AdaptiveTextWeight.Bolder,
                 Size = AdaptiveTextSize.Large
             },
-            // Subtitle
             new AdaptiveTextBlock
             {
                 Text = "Here are the courses you can enroll in:",
                 Wrap = true
+            },
+            new AdaptiveFactSet
+            {
+                Facts = courses.Select(course => new AdaptiveFact
+                {
+                    Title = "-",
+                    Value = course.Title
+                }).ToList()
             }
         }
             };
 
-            // Add course list or fallback message
-            if (!courses.Any())
-            {
-                card.Body.Add(new AdaptiveTextBlock
-                {
-                    Text = "No courses are currently available.",
-                    Weight = AdaptiveTextWeight.Lighter,
-                    Wrap = true
-                });
-            }
-            else
-            {
-                card.Body.Add(new AdaptiveContainer
-                {
-                    Items = courses.Select(course => new AdaptiveTextBlock
-                    {
-                        Text = $"• {course.Title}",
-                        Wrap = true
-                    }).ToList<AdaptiveElement>()
-                });
-            }
-
-            // Create an adaptive card attachment
-            var adaptiveCardAttachment = new Attachment
+            return new Attachment
             {
                 ContentType = "application/vnd.microsoft.card.adaptive",
                 Content = JObject.FromObject(card)
             };
-
-            return adaptiveCardAttachment;
         }
+
 
     }
 }
