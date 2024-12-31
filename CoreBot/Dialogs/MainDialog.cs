@@ -1,15 +1,14 @@
 ﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
-using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
 using Microsoft.Extensions.Logging;
 using UniversityBot.CognitiveModels;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using CoreBot.DialogDetails;
 using CoreBot;
+using Newtonsoft.Json.Linq;
 using System.Text;
 
 namespace UniversityBot.Dialogs
@@ -22,8 +21,6 @@ namespace UniversityBot.Dialogs
         public MainDialog(
             GetCoursesDialog getCoursesDialog,
             EnrollStudentDialog enrollStudentDialog,
-            //GetScheduleDialog getScheduleDialog,
-            //GetEventsDialog getEventsDialog,
             UniversityBotCLURecognizer recognizer,
             ILogger<MainDialog> logger)
             : base(nameof(MainDialog))
@@ -32,12 +29,8 @@ namespace UniversityBot.Dialogs
             _recognizer = recognizer;
 
             AddDialog(new TextPrompt(nameof(TextPrompt)));
-
-
             AddDialog(getCoursesDialog);
             AddDialog(enrollStudentDialog);
-            //AddDialog(getScheduleDialog);
-            //AddDialog(getEventsDialog);
 
             var waterfallSteps = new WaterfallStep[]
             {
@@ -47,7 +40,6 @@ namespace UniversityBot.Dialogs
             };
 
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
-
 
             InitialDialogId = nameof(WaterfallDialog);
         }
@@ -61,34 +53,87 @@ namespace UniversityBot.Dialogs
 
             // Default prompt if no action is detected
             var messageText = stepContext.Options?.ToString() ?? "How can I assist you today?";
-            return await stepContext.PromptAsync(nameof(TextPrompt), new PromptOptions { Prompt = MessageFactory.Text(messageText, messageText, InputHints.ExpectingInput) }, cancellationToken);
+            return await stepContext.PromptAsync(
+                nameof(TextPrompt),
+                new PromptOptions { Prompt = MessageFactory.Text(messageText, messageText, InputHints.ExpectingInput) },
+                cancellationToken);
         }
-
 
         private async Task<DialogTurnResult> ActionActStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var result = await _recognizer.RecognizeAsync<UniversityBotModel>(stepContext.Context, cancellationToken);
-
-            switch (result.GetTopIntent().intent)
+            try
             {
-                case UniversityBotModel.Intent.GetCourses:
-                    return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), cancellationToken: cancellationToken);
+                var activity = stepContext.Context.Activity;
 
-                case UniversityBotModel.Intent.EnrollStudent:
-                    var enrollDetails = new EnrollStudentDetails();
-                    enrollDetails.StudentID = GenerateStudentId(8);
-                    enrollDetails.CourseTitle = result.Entities.GetCourseName();
-                    
-                    return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), enrollDetails, cancellationToken: cancellationToken);
+                // Handle Adaptive Card Submit Action
+                if (activity.Value != null)
+                {
+                    return await HandleAdaptiveCardSubmitAsync(activity.Value, stepContext, cancellationToken);
+                }
 
-                //case UniversityBotModel.Intent.GetSchedule:
-                //    return await stepContext.BeginDialogAsync(nameof(GetScheduleDialog), cancellationToken: cancellationToken);
+                // Handle Recognizer Intent
+                var result = await _recognizer.RecognizeAsync<UniversityBotModel>(stepContext.Context, cancellationToken);
 
-                //case UniversityBotModel.Intent.GetEvents:
-                //    return await stepContext.BeginDialogAsync(nameof(GetEventsDialog), cancellationToken: cancellationToken);
+                switch (result.GetTopIntent().intent)
+                {
+                    case UniversityBotModel.Intent.GetCourses:
+                        return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), cancellationToken: cancellationToken);
 
-                default:
-                    return await stepContext.NextAsync(null, cancellationToken);
+                    case UniversityBotModel.Intent.EnrollStudent:
+                        var enrollDetails = new EnrollStudentDetails
+                        {
+                            StudentID = GenerateStudentId(8),
+                            CourseTitle = result.Entities.GetCourseName()
+                        };
+                        return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), enrollDetails, cancellationToken: cancellationToken);
+
+                    default:
+                        await stepContext.Context.SendActivityAsync("I'm sorry, I didn't understand that. Can you try rephrasing?", cancellationToken: cancellationToken);
+                        return await stepContext.NextAsync(null, cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ActionActStepAsync");
+                await stepContext.Context.SendActivityAsync("The bot encountered an error while processing your request.", cancellationToken: cancellationToken);
+                return await stepContext.NextAsync(null, cancellationToken);
+            }
+        }
+
+        private async Task<DialogTurnResult> HandleAdaptiveCardSubmitAsync(object value, WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (value is JObject actionData)
+                {
+                    var action = actionData["action"]?.ToString();
+
+                    switch (action)
+                    {
+                        case "viewCourses":
+                            return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), cancellationToken: cancellationToken);
+
+                        case "enrollCourse":
+                            return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), cancellationToken: cancellationToken);
+
+                        case "contactSupport":
+                            await stepContext.Context.SendActivityAsync("Support contact functionality is not yet implemented.", cancellationToken: cancellationToken);
+                            return await stepContext.NextAsync(null, cancellationToken);
+
+                        default:
+                            await stepContext.Context.SendActivityAsync("Unrecognized action from the card.", cancellationToken: cancellationToken);
+                            return await stepContext.NextAsync(null, cancellationToken);
+                    }
+                }
+
+                await stepContext.Context.SendActivityAsync("Invalid card action data.", cancellationToken: cancellationToken);
+                return await stepContext.NextAsync(null, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling Adaptive Card submit action.");
+                await stepContext.Context.SendActivityAsync("The bot encountered an error while processing the card action.", cancellationToken: cancellationToken);
+                return await stepContext.NextAsync(null, cancellationToken);
             }
         }
 
