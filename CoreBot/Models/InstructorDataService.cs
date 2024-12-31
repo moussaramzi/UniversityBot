@@ -8,7 +8,7 @@ namespace CoreBot.Models
     {
         public static async Task<List<Instructor>> GetInstructorsAsync()
         {
-            return await ApiService<List<Instructor>>.GetAsync("instructors");
+            return await ApiService<List<Instructor>>.GetAsync($"instructors");
         }
 
         public static async Task<Instructor> GetInstructorByIdAsync(int id)

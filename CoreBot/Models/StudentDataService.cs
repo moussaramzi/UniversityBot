@@ -9,7 +9,7 @@ namespace UniversityBot.DataServices
     {
         public static async Task<List<Student>> GetStudentsAsync()
         {
-            return await ApiService<List<Student>>.GetAsync("students");
+            return await ApiService<List<Student>>.GetAsync($"students");
         }
 
         public static async Task<Student> GetStudentByIdAsync(int id)
@@ -20,7 +20,7 @@ namespace UniversityBot.DataServices
         public static async Task<bool> EnrollStudentAsync(int studentId, string courseTitle)
         {
             var payload = new { StudentId = studentId, CourseTitle = courseTitle };
-            return await ApiService<bool>.PostAsync<bool>("students/enroll", payload);
+            return await ApiService<bool>.PostAsync<bool>($"students/enroll", payload);
         }
 
 

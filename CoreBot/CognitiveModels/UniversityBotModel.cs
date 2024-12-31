@@ -58,11 +58,14 @@ namespace UniversityBot.CognitiveModels
         {
             public CluEntity[] Entities;
 
-            public string GetName() => Entities.Where(e => e.Category == "Name").ToArray().FirstOrDefault()?.Text;
-            public string GetCourseTitle() => Entities.Where(e => e.Category == "CourseTitle").ToArray().FirstOrDefault()?.Text;
+            public string GetCapacity() => Entities.Where(e => e.Category == "capacity").ToArray().FirstOrDefault()?.Text;
+            public string GetCourseCategory() => Entities.Where(e => e.Category == "courseCategory").ToArray().FirstOrDefault()?.Text;
+            public string GetCourseName() => Entities.Where(e => e.Category == "courseName").ToArray().FirstOrDefault()?.Text;
             public string GetDate() => Entities.Where(e => e.Category == "Date").ToArray().FirstOrDefault()?.Text;
+            public string GetEventCategorie() => Entities.Where(e => e.Category == "EventCategorie").ToArray().FirstOrDefault()?.Text;
+            public string GetEventName() => Entities.Where(e => e.Category == "EventName").ToArray().FirstOrDefault()?.Text;
+            public string GetEventPlace() => Entities.Where(e => e.Category == "EventPlace").ToArray().FirstOrDefault()?.Text;
             public string GetTime() => Entities.Where(e => e.Category == "Time").ToArray().FirstOrDefault()?.Text;
-            public string GetStudentID() => Entities.Where(e => e.Category == "StudentID").ToArray().FirstOrDefault()?.Text;
         }
 
         public class CluEntity

@@ -8,7 +8,7 @@ namespace CoreBot.Models
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string StudentMail { get; set; }
-        public ICollection<Course>? EnrolledCourses { get; set; } = new List<Course>();
+        public ICollection<Course> EnrolledCourses { get; set; } = new List<Course>();
 
     }
 }

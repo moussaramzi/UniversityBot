@@ -1,4 +1,5 @@
 ﻿using CoreBot.Cards;
+using CoreBot.Models;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using System.Threading;
@@ -20,13 +21,14 @@ public class GetCoursesDialog : ComponentDialog
 
     private async Task<DialogTurnResult> ShowCoursesStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
     {
-        var card = await GetCoursesCard.CreateCardAttachmentAsync();
+        var courses = await CourseDataService.GetCoursesAsync();
+        var card = GetCoursesCard.CreateCardAttachmentAsync(courses);
         await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
         return await stepContext.NextAsync(null, cancellationToken);
     }
 
     private async Task<DialogTurnResult> EndDialogStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
     {
-        return await stepContext.EndDialogAsync(null, cancellationToken);
+        return await stepContext.EndDialogAsync(cancellationToken);
     }
 }
