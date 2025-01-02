@@ -59,7 +59,7 @@ namespace UniversityBot.Dialogs
 
                     // Mark the welcome card as shown
                     userProfile.HasShownWelcomeCard = true;
-                    await userProfileAccessor.SetAsync(stepContext.Context, userProfile); // Corrected this line
+                    await userProfileAccessor.SetAsync(stepContext.Context, userProfile);
                 }
             }
             catch (Exception ex)
@@ -71,11 +71,8 @@ namespace UniversityBot.Dialogs
                 );
             }
 
-
             return await stepContext.NextAsync(null, cancellationToken);
         }
-
-
 
         private async Task<DialogTurnResult> ActionActStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -92,30 +89,11 @@ namespace UniversityBot.Dialogs
                         var courses = await CourseDataService.GetCoursesAsync();
                         var card = GetCoursesCard.CreateCardAttachmentAsync(courses);
                         await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
-                        // Ask what else the user needs help with
                         await stepContext.Context.SendActivityAsync("What else can I help you with?");
                         return await stepContext.EndDialogAsync(null, cancellationToken);
 
                     case "enrollCourse":
                         return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), cancellationToken);
-
-<<<<<<< HEAD
-                switch (result.GetTopIntent().intent)
-                {
-                    case UniversityBotModel.Intent.GetCourses:
-                        var courseCategorie = result.Entities.GetCourseCategory(); // Method to extract course category
-                        return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), courseCategorie, cancellationToken: cancellationToken);
-
-                    case UniversityBotModel.Intent.EnrollStudent:
-                        var enrollDetails = new EnrollStudentDetails
-                        {
-                            StudentID = GenerateStudentId(8),
-                            CourseTitle = result.Entities.GetCourseName()
-                        };
-                        return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), enrollDetails, cancellationToken: cancellationToken);
-=======
-           
->>>>>>> 9efc54406d5af5cf8b7ee852da59262d23675404
 
                     default:
                         await stepContext.Context.SendActivityAsync("Unrecognized action.");
@@ -126,20 +104,13 @@ namespace UniversityBot.Dialogs
             return await stepContext.NextAsync(null, cancellationToken);
         }
 
-
         private async Task<DialogTurnResult> FinalStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             await stepContext.Context.SendActivityAsync("What can I help you with?", cancellationToken: cancellationToken);
             return await stepContext.EndDialogAsync(null, cancellationToken);
         }
 
-<<<<<<< HEAD
-        private static Random _random = new Random();
-
         public static int GenerateStudentId(int length)
-=======
-        public static string GenerateStudentId(int length)
->>>>>>> 9efc54406d5af5cf8b7ee852da59262d23675404
         {
             const string chars = "0123456789"; // Use only numeric characters to ensure valid integer conversion
             var stringBuilder = new StringBuilder();
@@ -151,7 +122,6 @@ namespace UniversityBot.Dialogs
             }
 
             // Convert the generated string to an integer
-            // Use int.TryParse for safer conversion
             if (int.TryParse(stringBuilder.ToString(), out int studentId))
             {
                 return studentId;
@@ -161,6 +131,5 @@ namespace UniversityBot.Dialogs
                 throw new InvalidOperationException("Failed to generate a valid numeric student ID.");
             }
         }
-
     }
 }
