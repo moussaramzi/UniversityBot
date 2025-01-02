@@ -77,7 +77,8 @@ namespace UniversityBot.Dialogs
                 switch (result.GetTopIntent().intent)
                 {
                     case UniversityBotModel.Intent.GetCourses:
-                        return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), cancellationToken: cancellationToken);
+                        var courseCategorie = result.Entities.GetCourseCategory(); // Method to extract course category
+                        return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), courseCategorie, cancellationToken: cancellationToken);
 
                     case UniversityBotModel.Intent.EnrollStudent:
                         var enrollDetails = new EnrollStudentDetails
@@ -145,9 +146,9 @@ namespace UniversityBot.Dialogs
 
         private static Random _random = new Random();
 
-        public static string GenerateStudentId(int length)
+        public static int GenerateStudentId(int length)
         {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const string chars = "0123456789"; // Use only numeric characters to ensure valid integer conversion
             var stringBuilder = new StringBuilder();
 
             for (int i = 0; i < length; i++)
@@ -155,7 +156,17 @@ namespace UniversityBot.Dialogs
                 stringBuilder.Append(chars[_random.Next(chars.Length)]);
             }
 
-            return stringBuilder.ToString();
+            // Convert the generated string to an integer
+            // Use int.TryParse for safer conversion
+            if (int.TryParse(stringBuilder.ToString(), out int studentId))
+            {
+                return studentId;
+            }
+            else
+            {
+                throw new InvalidOperationException("Failed to generate a valid numeric student ID.");
+            }
         }
+
     }
 }

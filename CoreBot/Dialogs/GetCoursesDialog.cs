@@ -25,11 +25,24 @@ public class GetCoursesDialog : ComponentDialog
     {
         try
         {
-            // Fetch courses from the data service
+            // Retrieve the courseCategorie passed to the dialog
+            string courseCategorie = stepContext.Options as string;
+
+            // Fetch all courses from the data service
             var courses = await CourseDataService.GetCoursesAsync();
+
+            // Filter courses by courseCategorie if specified
+            if (!string.IsNullOrEmpty(courseCategorie))
+            {
+                courses = courses.FindAll(course => course.Category.Equals(courseCategorie, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Check if any courses are available after filtering
             if (courses == null || courses.Count == 0)
             {
-                await stepContext.Context.SendActivityAsync("No courses are currently available.", cancellationToken: cancellationToken);
+                await stepContext.Context.SendActivityAsync(
+                    $"No courses are currently available for the category '{courseCategorie}'.",
+                    cancellationToken: cancellationToken);
                 return await stepContext.NextAsync(null, cancellationToken);
             }
 
@@ -58,3 +71,4 @@ public class GetCoursesDialog : ComponentDialog
         return await stepContext.EndDialogAsync(null, cancellationToken);
     }
 }
+

@@ -25,15 +25,12 @@ public class EnrollStudentDialog : ComponentDialog
 
         if (details != null)
         {
-            if (int.TryParse(details.StudentID, out int studentId))
-            {
-                var card = await EnrollStudentCard.CreateCardAttachmentAsync(studentId, details.CourseTitle);
-                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
-            }
-            else
-            {
-                await stepContext.Context.SendActivityAsync("Invalid Student ID. Please provide a numeric ID.");
-            }
+            // Assuming StudentID is an integer, no need for parsing
+            var studentId = details.StudentID;
+
+            // Generate and send the card
+            var card = await EnrollStudentCard.CreateCardAttachmentAsync(studentId, details.CourseTitle);
+            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
         }
         else
         {
@@ -42,6 +39,7 @@ public class EnrollStudentDialog : ComponentDialog
 
         return await stepContext.NextAsync(null, cancellationToken);
     }
+
 
 
     private async Task<DialogTurnResult> EndDialogStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)

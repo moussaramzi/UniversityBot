@@ -2,7 +2,7 @@
 {
     public class EnrollStudentDetails
     {
-        public string StudentID { get; set; }
+        public int StudentID { get; set; }
         public string CourseTitle { get; set; }
     }
 }
