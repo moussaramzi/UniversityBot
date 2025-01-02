@@ -11,6 +11,7 @@ using CoreBot.Cards;
 using CoreBot.DialogDetails;
 using CoreBot.Models;
 using UniversityBot.CognitiveModels;
+using CoreBot;
 
 namespace UniversityBot.Dialogs
 {
@@ -18,17 +19,20 @@ namespace UniversityBot.Dialogs
     {
         private readonly ILogger _logger;
         private readonly UserState _userState;
+        private readonly UniversityBotCLURecognizer _recognizer;
         private static Random _random = new Random();
 
         public MainDialog(
             GetCoursesDialog getCoursesDialog,
             EnrollStudentDialog enrollStudentDialog,
             UserState userState,
+            UniversityBotCLURecognizer recognizer,
             ILogger<MainDialog> logger)
             : base(nameof(MainDialog))
         {
             _logger = logger;
             _userState = userState;
+            _recognizer = recognizer;
 
             AddDialog(new TextPrompt(nameof(TextPrompt)));
             AddDialog(getCoursesDialog);
@@ -38,7 +42,7 @@ namespace UniversityBot.Dialogs
             {
                 FirstActionStepAsync,
                 ActionActStepAsync,
-                FinalStepAsync,
+                FinalStepAsync
             };
 
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
@@ -63,8 +67,8 @@ namespace UniversityBot.Dialogs
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error displaying welcome card.");
-                await stepContext.Context.SendActivityAsync("An error occurred while displaying the welcome card.");
+                _logger.LogError(ex, "Error during FirstActionStepAsync.");
+                await stepContext.Context.SendActivityAsync("An error occurred during initialization. Please try again later.");
             }
 
             return await stepContext.NextAsync(null, cancellationToken);
@@ -74,6 +78,13 @@ namespace UniversityBot.Dialogs
         {
             var activity = stepContext.Context.Activity;
 
+            // Skip handling for non-message activities (e.g., conversationUpdate)
+            if (activity.Type != ActivityTypes.Message)
+            {
+                return await stepContext.NextAsync(null, cancellationToken);
+            }
+
+            // Check for Adaptive Card actions
             if (activity.Value is JObject actionData)
             {
                 var action = actionData["action"]?.ToString();
@@ -82,40 +93,66 @@ namespace UniversityBot.Dialogs
                 {
                     case "viewCourses":
                         var courses = await CourseDataService.GetCoursesAsync();
-                        var card = GetCoursesCard.CreateCardAttachmentAsync(courses);
-                        await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
+                        var coursesCard = GetCoursesCard.CreateCardAttachmentAsync(courses);
+                        await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
                         await stepContext.Context.SendActivityAsync("What else can I help you with?");
                         return await stepContext.EndDialogAsync(null, cancellationToken);
 
                     case "enrollCourse":
-                        return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), cancellationToken);
+                        return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), null, cancellationToken);
 
                     default:
-                        var result = stepContext.Context.TurnState.Get<RecognizerResult>("RecognizerResult");
-                        switch (result.GetTopIntent().intent)
-                        {
-                            case UniversityBotModel.Intent.GetCourses:
-                                var courseCategory = result.Entities.GetCourseCategory();
-                                return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), courseCategory, cancellationToken);
-
-                            case UniversityBotModel.Intent.EnrollStudent:
-                                var enrollDetails = new EnrollStudentDetails
-                                {
-                                    StudentID = GenerateStudentId(8),
-                                    CourseTitle = result.Entities.GetCourseName()
-                                };
-                                return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), enrollDetails, cancellationToken);
-
-                            default:
-                                await stepContext.Context.SendActivityAsync("Unrecognized action.");
-                                return await stepContext.NextAsync(null, cancellationToken);
-                        }
+                        return await stepContext.NextAsync(null, cancellationToken);
                 }
             }
             else
             {
-                await stepContext.Context.SendActivityAsync("Invalid action data received.");
+                await HandleCLUIntents(stepContext, cancellationToken);
                 return await stepContext.NextAsync(null, cancellationToken);
+            }
+        }
+
+        private async Task HandleCLUIntents(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            var activity = stepContext.Context.Activity;
+            var text = activity.Text?.Trim();
+
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            try
+            {
+                var result = await _recognizer.RecognizeAsync<UniversityBotModel>(stepContext.Context, cancellationToken);
+
+                switch (result.GetTopIntent().intent)
+                {
+                    case UniversityBotModel.Intent.GetCourses:
+                        string courseCategorie = stepContext.Options as string;
+                        var coursesList = await CourseDataService.GetCoursesAsync();
+                        if (!string.IsNullOrEmpty(courseCategorie))
+                        {
+                            coursesList = coursesList.FindAll(course => course.Category.Equals(courseCategorie, StringComparison.OrdinalIgnoreCase));
+                        }
+                        var coursesCard = GetCoursesCard.CreateCardAttachmentAsync(coursesList);
+                        await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
+                        await stepContext.Context.SendActivityAsync("Here are the available courses. What else can I help you with?");
+                        break;
+
+                    case UniversityBotModel.Intent.EnrollStudent:
+                        await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), null, cancellationToken);
+                        break;
+
+                    default:
+                        await stepContext.Context.SendActivityAsync("I'm sorry, I didn't understand that. Can you try rephrasing?");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing CLU recognizer.");
+                await stepContext.Context.SendActivityAsync("An error occurred while processing your input. Please try again.");
             }
         }
 
