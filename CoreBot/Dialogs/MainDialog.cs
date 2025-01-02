@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using CoreBot.Cards;
 using CoreBot.DialogDetails;
 using CoreBot.Models;
+using UniversityBot.CognitiveModels;
 
 namespace UniversityBot.Dialogs
 {
@@ -17,6 +18,7 @@ namespace UniversityBot.Dialogs
     {
         private readonly ILogger _logger;
         private readonly UserState _userState;
+        private static Random _random = new Random();
 
         public MainDialog(
             GetCoursesDialog getCoursesDialog,
@@ -40,7 +42,6 @@ namespace UniversityBot.Dialogs
             };
 
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
-
             InitialDialogId = nameof(WaterfallDialog);
         }
 
@@ -51,24 +52,19 @@ namespace UniversityBot.Dialogs
                 var userProfileAccessor = _userState.CreateProperty<UserProfile>("UserProfile");
                 var userProfile = await userProfileAccessor.GetAsync(stepContext.Context, () => new UserProfile(), cancellationToken);
 
-                // Check if the welcome card has been shown
                 if (!userProfile.HasShownWelcomeCard)
                 {
                     var welcomeCard = WelcomeCard.CreateCardAttachment();
                     await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(welcomeCard), cancellationToken);
 
-                    // Mark the welcome card as shown
                     userProfile.HasShownWelcomeCard = true;
-                    await userProfileAccessor.SetAsync(stepContext.Context, userProfile);
+                    await userProfileAccessor.SetAsync(stepContext.Context, userProfile, cancellationToken);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating or sending WelcomeCard.");
-                await stepContext.Context.SendActivityAsync(
-                    MessageFactory.Text("An error occurred while displaying the welcome card."),
-                    cancellationToken
-                );
+                _logger.LogError(ex, "Error displaying welcome card.");
+                await stepContext.Context.SendActivityAsync("An error occurred while displaying the welcome card.");
             }
 
             return await stepContext.NextAsync(null, cancellationToken);
@@ -78,10 +74,9 @@ namespace UniversityBot.Dialogs
         {
             var activity = stepContext.Context.Activity;
 
-            if (activity.Value != null)
+            if (activity.Value is JObject actionData)
             {
-                var actionData = activity.Value as JObject;
-                var action = actionData?["action"]?.ToString();
+                var action = actionData["action"]?.ToString();
 
                 switch (action)
                 {
@@ -96,12 +91,32 @@ namespace UniversityBot.Dialogs
                         return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), cancellationToken);
 
                     default:
-                        await stepContext.Context.SendActivityAsync("Unrecognized action.");
-                        return await stepContext.NextAsync(null, cancellationToken);
+                        var result = stepContext.Context.TurnState.Get<RecognizerResult>("RecognizerResult");
+                        switch (result.GetTopIntent().intent)
+                        {
+                            case UniversityBotModel.Intent.GetCourses:
+                                var courseCategory = result.Entities.GetCourseCategory();
+                                return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), courseCategory, cancellationToken);
+
+                            case UniversityBotModel.Intent.EnrollStudent:
+                                var enrollDetails = new EnrollStudentDetails
+                                {
+                                    StudentID = GenerateStudentId(8),
+                                    CourseTitle = result.Entities.GetCourseName()
+                                };
+                                return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), enrollDetails, cancellationToken);
+
+                            default:
+                                await stepContext.Context.SendActivityAsync("Unrecognized action.");
+                                return await stepContext.NextAsync(null, cancellationToken);
+                        }
                 }
             }
-
-            return await stepContext.NextAsync(null, cancellationToken);
+            else
+            {
+                await stepContext.Context.SendActivityAsync("Invalid action data received.");
+                return await stepContext.NextAsync(null, cancellationToken);
+            }
         }
 
         private async Task<DialogTurnResult> FinalStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -112,16 +127,14 @@ namespace UniversityBot.Dialogs
 
         public static int GenerateStudentId(int length)
         {
-            const string chars = "0123456789"; // Use only numeric characters to ensure valid integer conversion
+            const string chars = "0123456789";
             var stringBuilder = new StringBuilder();
-            var random = new Random();
 
             for (int i = 0; i < length; i++)
             {
-                stringBuilder.Append(chars[random.Next(chars.Length)]);
+                stringBuilder.Append(chars[_random.Next(chars.Length)]);
             }
 
-            // Convert the generated string to an integer
             if (int.TryParse(stringBuilder.ToString(), out int studentId))
             {
                 return studentId;
