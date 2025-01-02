@@ -1,61 +1,64 @@
 ﻿using AdaptiveCards;
 using Microsoft.Bot.Schema;
 using Newtonsoft.Json.Linq;
-using CoreBot.Models;
-using System;
+using CoreBot.DialogDetails;
 using System.Collections.Generic;
 using System.Linq;
-using UniversityBot.DataServices;
 using System.Threading.Tasks;
 
 namespace CoreBot.Cards
 {
-    public class EnrollStudentCard
+    public static class EnrollStudentCard
     {
-        public static async Task<Attachment> CreateCardAttachmentAsync(int studentId, string courseTitle)
+        public static async Task<Attachment> CreateCardAttachmentAsync(EnrollStudentDetails details)
         {
-            var student = await StudentDataService.GetStudentByIdAsync(studentId);
-            var course = await CourseDataService.GetCoursesAsync();
-            var selectedCourse = course.FirstOrDefault(c => c.Title.Equals(courseTitle, StringComparison.OrdinalIgnoreCase));
-
-            if (student == null || selectedCourse == null)
-            {
-                throw new Exception("Student or Course not found.");
-            }
-
             var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 0))
             {
                 Body = new List<AdaptiveElement>
                 {
-                    // Title TextBlock
                     new AdaptiveTextBlock
                     {
                         Text = "Confirm Enrollment",
                         Weight = AdaptiveTextWeight.Bolder,
                         Size = AdaptiveTextSize.Large
                     },
-                    // Student Name TextBlock
                     new AdaptiveTextBlock
                     {
-                        Text = $"Student: {student.FirstName}",
+                        Text = $"First Name: {details.FirstName}",
                         Wrap = true
                     },
-                    // Course Title TextBlock
                     new AdaptiveTextBlock
                     {
-                        Text = $"Course: {selectedCourse.Title}",
+                        Text = $"Last Name: {details.LastName}",
                         Wrap = true
+                    },
+                    new AdaptiveTextBlock
+                    {
+                        Text = $"Email: {details.StudentMail}",
+                        Wrap = true
+                    },
+                    new AdaptiveTextBlock
+                    {
+                        Text = "Courses:",
+                        Weight = AdaptiveTextWeight.Bolder,
+                        Wrap = true
+                    },
+                    new AdaptiveFactSet
+                    {
+                        Facts = details.CourseTitles.Select(course => new AdaptiveFact
+                        {
+                            Title = "-",
+                            Value = course
+                        }).ToList()
                     }
                 },
                 Actions = new List<AdaptiveAction>
                 {
-                    // Confirm Action
                     new AdaptiveSubmitAction
                     {
                         Title = "Confirm",
-                        Data = new { action = "confirmEnrollment", studentId = student.StudentID, courseTitle = selectedCourse.Title }
+                        Data = new { action = "confirmEnrollment" }
                     },
-                    // Cancel Action
                     new AdaptiveSubmitAction
                     {
                         Title = "Cancel",
@@ -64,14 +67,11 @@ namespace CoreBot.Cards
                 }
             };
 
-            // Create an attachment
-            var adaptiveCardAttachment = new Attachment
+            return new Attachment
             {
                 ContentType = "application/vnd.microsoft.card.adaptive",
                 Content = JObject.FromObject(card)
             };
-
-            return adaptiveCardAttachment;
         }
     }
 }
