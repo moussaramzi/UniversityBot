@@ -57,14 +57,20 @@ namespace UniversityBot.CognitiveModels
         {
             public CluEntity[] Entities;
 
-            public string GetCapacity() => Entities.Where(e => e.Category == "capacity").ToArray().FirstOrDefault()?.Text;
-            public string GetCourseCategory() => Entities.Where(e => e.Category == "courseCategory").ToArray().FirstOrDefault()?.Text;
-            public string GetCourseName() => Entities.Where(e => e.Category == "courseName").ToArray().FirstOrDefault()?.Text;
-            public string GetDate() => Entities.Where(e => e.Category == "Date").ToArray().FirstOrDefault()?.Text;
-            public string GetEventName() => Entities.Where(e => e.Category == "EventName").ToArray().FirstOrDefault()?.Text;
-            public string GetFirstName() => Entities.Where(e => e.Category == "Firstname").ToArray().FirstOrDefault()?.Text;
-            public string GetLastName() => Entities.Where(e => e.Category == "Lastname").ToArray().FirstOrDefault()?.Text;
-            public string GetTime() => Entities.Where(e => e.Category == "Time").ToArray().FirstOrDefault()?.Text;
+            public string GetCapacity() => Entities.Where(e => e.Category == "capacity").FirstOrDefault()?.Text;
+            public string GetCourseCategory() => Entities.Where(e => e.Category == "courseCategory").FirstOrDefault()?.Text;
+
+            // Update to return a list of course names
+            public List<string> GetCourseNames() => Entities
+                .Where(e => e.Category == "courseName")
+                .Select(e => e.Text)
+                .ToList();
+
+            public string GetDate() => Entities.Where(e => e.Category == "Date").FirstOrDefault()?.Text;
+            public string GetEventName() => Entities.Where(e => e.Category == "EventName").FirstOrDefault()?.Text;
+            public string GetFirstName() => Entities.Where(e => e.Category == "Firstname").FirstOrDefault()?.Text;
+            public string GetLastName() => Entities.Where(e => e.Category == "Lastname").FirstOrDefault()?.Text;
+            public string GetTime() => Entities.Where(e => e.Category == "Time").FirstOrDefault()?.Text;
         }
 
         public class CluEntity
