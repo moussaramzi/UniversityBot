@@ -4,6 +4,7 @@ using Microsoft.Bot.Schema;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,8 +12,8 @@ using CoreBot.Cards;
 using CoreBot.DialogDetails;
 using CoreBot.Models;
 using UniversityBot.CognitiveModels;
-using CoreBot;
 using CoreBot.Dialogs;
+using CoreBot;
 
 namespace UniversityBot.Dialogs
 {
@@ -21,7 +22,6 @@ namespace UniversityBot.Dialogs
         private readonly ILogger _logger;
         private readonly UserState _userState;
         private readonly UniversityBotCLURecognizer _recognizer;
-        private static Random _random = new Random();
 
         public MainDialog(
             GetCoursesDialog getCoursesDialog,
@@ -81,12 +81,6 @@ namespace UniversityBot.Dialogs
         {
             var activity = stepContext.Context.Activity;
 
-            // Skip handling for non-message activities (e.g., conversationUpdate)
-            if (activity.Type != ActivityTypes.Message)
-            {
-                return await stepContext.NextAsync(null, cancellationToken);
-            }
-
             // Check for Adaptive Card actions
             if (activity.Value is JObject actionData)
             {
@@ -96,7 +90,7 @@ namespace UniversityBot.Dialogs
                 {
                     case "viewCourses":
                         var courses = await CourseDataService.GetCoursesAsync();
-                        var coursesCard = GetCoursesCard.CreateCardAttachmentAsync(courses);
+                        var coursesCard = await GetCoursesCard.CreateCardAttachmentAsync(courses);
                         await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
                         await stepContext.Context.SendActivityAsync("What else can I help you with?");
                         return await stepContext.EndDialogAsync(null, cancellationToken);
@@ -108,85 +102,55 @@ namespace UniversityBot.Dialogs
                         return await stepContext.NextAsync(null, cancellationToken);
                 }
             }
-            else
+
+            // Process natural language input
+            if (_recognizer.IsConfigured && activity.Type == ActivityTypes.Message)
             {
-                await HandleCLUIntents(stepContext, cancellationToken);
-                return await stepContext.NextAsync(null, cancellationToken);
-            }
-        }
-
-        private async Task HandleCLUIntents(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            var activity = stepContext.Context.Activity;
-            var text = activity.Text?.Trim();
-
-            if (string.IsNullOrEmpty(text))
-            {
-                return;
-            }
-
-            try
-            {
-                var result = await _recognizer.RecognizeAsync<UniversityBotModel>(stepContext.Context, cancellationToken);
-
-                switch (result.GetTopIntent().intent)
+                try
                 {
-                    case UniversityBotModel.Intent.GetCourses:
-                        string courseCategorie = stepContext.Options as string;
-                        var coursesList = await CourseDataService.GetCoursesAsync();
-                        if (!string.IsNullOrEmpty(courseCategorie))
-                        {
-                            coursesList = coursesList.FindAll(course => course.Category.Equals(courseCategorie, StringComparison.OrdinalIgnoreCase));
-                        }
-                        var coursesCard = GetCoursesCard.CreateCardAttachmentAsync(coursesList);
-                        await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
-                        await stepContext.Context.SendActivityAsync("Here are the available courses. What else can I help you with?");
-                        break;
+                    var result = await _recognizer.RecognizeAsync<UniversityBotModel>(stepContext.Context, cancellationToken);
 
-                    case UniversityBotModel.Intent.EnrollStudent:
-                        await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), null, cancellationToken);
-                        break;
+                    switch (result.GetTopIntent().intent)
+                    {
+                        case UniversityBotModel.Intent.GetCourses:
+                            var coursesList = await CourseDataService.GetCoursesAsync();
+                            var coursesCard = await GetCoursesCard.CreateCardAttachmentAsync(coursesList);
+                            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
+                            await stepContext.Context.SendActivityAsync("Here are the available courses. What else can I help you with?");
+                            break;
 
-                    case UniversityBotModel.Intent.GetEvents:
-                        await stepContext.BeginDialogAsync(nameof(GetEventsDialog), null, cancellationToken);
-                        break;
+                        case UniversityBotModel.Intent.EnrollStudent:
+                            var enrollDetails = new EnrollStudentDetails
+                            {
+                                FirstName = result.Entities.GetFirstName(),
+                                LastName = result.Entities.GetLastName(),
+                                CourseTitles = result.Entities.GetCourseNames()
+                            };
+                            return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), enrollDetails, cancellationToken);
 
-                    default:
-                        await stepContext.Context.SendActivityAsync("I'm sorry, I didn't understand that. Can you try rephrasing?");
-                        break;
+                        case UniversityBotModel.Intent.GetEvents:
+                            await stepContext.BeginDialogAsync(nameof(GetEventsDialog), null, cancellationToken);
+                            break;
+
+                        default:
+                            await stepContext.Context.SendActivityAsync("I'm sorry, I didn't understand that. Can you try rephrasing?");
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing CLU recognizer.");
+                    await stepContext.Context.SendActivityAsync("An error occurred while processing your input. Please try again.");
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing CLU recognizer.");
-                await stepContext.Context.SendActivityAsync("An error occurred while processing your input. Please try again.");
-            }
+
+            return await stepContext.NextAsync(null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> FinalStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             await stepContext.Context.SendActivityAsync("What can I help you with?", cancellationToken: cancellationToken);
             return await stepContext.EndDialogAsync(null, cancellationToken);
-        }
-
-        public static int GenerateStudentId(int length)
-        {
-            const string chars = "0123456789";
-            var stringBuilder = new StringBuilder();
-
-            for (int i = 0; i < length; i++)
-            {
-                stringBuilder.Append(chars[_random.Next(chars.Length)]);
-            }
-
-            if (int.TryParse(stringBuilder.ToString(), out int studentId))
-            {
-                return studentId;
-            }
-            else
-            {
-                throw new InvalidOperationException("Failed to generate a valid numeric student ID.");
-            }
         }
     }
 }

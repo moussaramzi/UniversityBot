@@ -47,7 +47,7 @@ public class GetCoursesDialog : ComponentDialog
             }
 
             // Create the adaptive card for displaying courses
-            var card = GetCoursesCard.CreateCardAttachmentAsync(courses);
+            var card = await GetCoursesCard.CreateCardAttachmentAsync(courses);
             await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
 
             return await stepContext.NextAsync(null, cancellationToken);
