@@ -12,6 +12,7 @@ using CoreBot.DialogDetails;
 using CoreBot.Models;
 using UniversityBot.CognitiveModels;
 using CoreBot;
+using CoreBot.Dialogs;
 
 namespace UniversityBot.Dialogs
 {
@@ -25,6 +26,7 @@ namespace UniversityBot.Dialogs
         public MainDialog(
             GetCoursesDialog getCoursesDialog,
             EnrollStudentDialog enrollStudentDialog,
+            GetEventsDialog getEventsDialog,
             UserState userState,
             UniversityBotCLURecognizer recognizer,
             ILogger<MainDialog> logger)
@@ -37,6 +39,7 @@ namespace UniversityBot.Dialogs
             AddDialog(new TextPrompt(nameof(TextPrompt)));
             AddDialog(getCoursesDialog);
             AddDialog(enrollStudentDialog);
+            AddDialog(getEventsDialog);
 
             var waterfallSteps = new WaterfallStep[]
             {
@@ -142,6 +145,10 @@ namespace UniversityBot.Dialogs
 
                     case UniversityBotModel.Intent.EnrollStudent:
                         await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), null, cancellationToken);
+                        break;
+
+                    case UniversityBotModel.Intent.GetEvents:
+                        await stepContext.BeginDialogAsync(nameof(GetEventsDialog), null, cancellationToken);
                         break;
 
                     default:

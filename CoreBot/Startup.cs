@@ -1,6 +1,7 @@
 ﻿// Generated with CoreBot .NET Template version v4.22.0
 
 using CoreBot.Bots;
+using CoreBot.Dialogs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Bot.Builder;
@@ -44,6 +45,7 @@ namespace CoreBot
             // Register the Dialogs.
             services.AddSingleton<GetCoursesDialog>();
             services.AddSingleton<EnrollStudentDialog>();
+            services.AddSingleton<GetEventsDialog>();
 
             // The MainDialog that will be run by the bot.
             services.AddSingleton<MainDialog>();

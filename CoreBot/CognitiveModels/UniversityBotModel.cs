@@ -11,7 +11,6 @@ namespace UniversityBot.CognitiveModels
         {
             GetCourses,
             EnrollStudent,
-            GetSchedule,
             GetEvents,
             None
         }
@@ -62,9 +61,9 @@ namespace UniversityBot.CognitiveModels
             public string GetCourseCategory() => Entities.Where(e => e.Category == "courseCategory").ToArray().FirstOrDefault()?.Text;
             public string GetCourseName() => Entities.Where(e => e.Category == "courseName").ToArray().FirstOrDefault()?.Text;
             public string GetDate() => Entities.Where(e => e.Category == "Date").ToArray().FirstOrDefault()?.Text;
-            public string GetEventCategorie() => Entities.Where(e => e.Category == "EventCategorie").ToArray().FirstOrDefault()?.Text;
             public string GetEventName() => Entities.Where(e => e.Category == "EventName").ToArray().FirstOrDefault()?.Text;
-            public string GetEventPlace() => Entities.Where(e => e.Category == "EventPlace").ToArray().FirstOrDefault()?.Text;
+            public string GetFirstName() => Entities.Where(e => e.Category == "Firstname").ToArray().FirstOrDefault()?.Text;
+            public string GetLastName() => Entities.Where(e => e.Category == "Lastname").ToArray().FirstOrDefault()?.Text;
             public string GetTime() => Entities.Where(e => e.Category == "Time").ToArray().FirstOrDefault()?.Text;
         }
 
