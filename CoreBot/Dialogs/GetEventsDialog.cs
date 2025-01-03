@@ -7,6 +7,8 @@ using System;
 using CoreBot.Cards;
 using Microsoft.Bot.Builder;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CoreBot.Dialogs
 {
@@ -29,9 +31,15 @@ namespace CoreBot.Dialogs
             {
                 EventDetail eventDetail = stepContext.Options as EventDetail;
 
-                var events = await EventDataService.GetEventsAsync();
+                if (eventDetail == null)
+                {
+                    await stepContext.Context.SendActivityAsync("Invalid event details provided.", cancellationToken: cancellationToken);
+                    return await stepContext.EndDialogAsync(null, cancellationToken);
+                }
 
-                if (eventDetail.eventName != null)
+                var events = await EventDataService.GetEventsAsync() ?? new List<Event>();
+
+                if (!string.IsNullOrWhiteSpace(eventDetail.eventName))
                 {
                     events = events.FindAll(e => e.eventName.Equals(eventDetail.eventName, StringComparison.OrdinalIgnoreCase));
                 }
@@ -41,39 +49,35 @@ namespace CoreBot.Dialogs
                     events = events.FindAll(e => e.date.Date == eventDetail.date.Date);
                 }
 
-                if (eventDetail.time != null)
+                if (!string.IsNullOrWhiteSpace(eventDetail.time))
                 {
                     events = events.FindAll(e => e.time.Equals(eventDetail.time, StringComparison.OrdinalIgnoreCase));
                 }
 
-                if (events == null || events.Count == 0)
+                if (!events.Any())
                 {
-                    await stepContext.Context.SendActivityAsync(
-                        $"No events are currently planned.",
-                        cancellationToken: cancellationToken);
+                    await stepContext.Context.SendActivityAsync("No events are currently planned.", cancellationToken: cancellationToken);
                     return await stepContext.NextAsync(null, cancellationToken);
                 }
 
-                // Create the adaptive card for displaying courses
-                var card = GetEventsCard.CreateCardAttachmentAsync(events);
-                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
+                var card = GetEventsCard.CreateCardAttachment(events); // Ensure implementation
+                if (card != null)
+                {
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
+                }
 
                 return await stepContext.NextAsync(null, cancellationToken);
-
             }
             catch (Exception ex)
             {
-                // Log the exception
-                stepContext.Context.TurnState.Get<ILogger>().LogError(ex, "Error in ShowEventsStepAsync");
+                var logger = stepContext.Context.TurnState.Get<ILogger>();
+                logger?.LogError(ex, "Error in ShowEventsStepAsync");
 
-                // Notify the user of the error
-                await stepContext.Context.SendActivityAsync(
-                    "An error occurred while retrieving the courses. Please try again later.",
-                    cancellationToken: cancellationToken);
-
+                await stepContext.Context.SendActivityAsync("An error occurred while retrieving the events. Please try again later.", cancellationToken: cancellationToken);
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
         }
+
         private async Task<DialogTurnResult> EndDialogStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             return await stepContext.EndDialogAsync(null, cancellationToken);
