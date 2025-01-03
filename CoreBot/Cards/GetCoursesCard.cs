@@ -39,7 +39,7 @@ namespace CoreBot.Cards
                     };
                 }
 
-                // Normal card creation logic
+                // Create the card
                 var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 0))
                 {
                     Body = new List<AdaptiveElement>
@@ -48,23 +48,62 @@ namespace CoreBot.Cards
                         {
                             Text = "Available Courses",
                             Weight = AdaptiveTextWeight.Bolder,
-                            Size = AdaptiveTextSize.Large
+                            Size = AdaptiveTextSize.ExtraLarge,
+                            Spacing = AdaptiveSpacing.Medium,
+                            Wrap = true
                         },
                         new AdaptiveTextBlock
                         {
-                            Text = "Here are the courses you can enroll in:",
-                            Wrap = true
-                        },
-                        new AdaptiveFactSet
-                        {
-                            Facts = courses.Select(course => new AdaptiveFact
-                            {
-                                Title = "-",
-                                Value = course.Title
-                            }).ToList()
+                            Text = "Below are the courses you can enroll in, along with their details and instructors.",
+                            Wrap = true,
+                            Spacing = AdaptiveSpacing.Small
                         }
                     }
                 };
+
+                // Add details for each course in separate sections
+                foreach (var course in courses)
+                {
+                    // Create a list of instructor names
+                    var instructorNames = course.Instructors != null && course.Instructors.Any()
+                        ? string.Join(", ", course.Instructors.Select(i => i.Name))
+                        : "No instructors assigned";
+
+                    card.Body.Add(new AdaptiveContainer
+                    {
+                        Items = new List<AdaptiveElement>
+                        {
+                            new AdaptiveTextBlock
+                            {
+                                Text = course.Title,
+                                Weight = AdaptiveTextWeight.Bolder,
+                                Size = AdaptiveTextSize.Large,
+                                Wrap = true,
+                                Spacing = AdaptiveSpacing.Medium
+                            },
+                            new AdaptiveTextBlock
+                            {
+                                Text = $"Category: {course.Category}",
+                                Wrap = true,
+                                Spacing = AdaptiveSpacing.Small
+                            },
+                            new AdaptiveTextBlock
+                            {
+                                Text = $"Enrolled Students: {course.RegisteredStudents}/{course.Capacity}",
+                                Wrap = true,
+                                Spacing = AdaptiveSpacing.Small
+                            },
+                            new AdaptiveTextBlock
+                            {
+                                Text = $"Instructors: {instructorNames}",
+                                Wrap = true,
+                                Spacing = AdaptiveSpacing.Small
+                            }
+                        },
+                        Separator = true,
+                        Spacing = AdaptiveSpacing.Medium
+                    });
+                }
 
                 return new Attachment
                 {
