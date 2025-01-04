@@ -10,6 +10,7 @@ using CoreBot.Cards;
 using CoreBot.Models;
 using CoreBot;
 using UniversityBot.CognitiveModels;
+using CoreBot.DialogDetails;
 
 namespace UniversityBot.Dialogs
 {
@@ -77,7 +78,36 @@ namespace UniversityBot.Dialogs
         {
             var activity = stepContext.Context.Activity;
 
-            if (activity.Type == ActivityTypes.Message && _recognizer.IsConfigured)
+            // Check for Adaptive Card actions
+            if (activity.Value is JObject actionData)
+            {
+                var action = actionData["action"]?.ToString();
+
+                switch (action)
+                {
+                    case "viewCourses":
+                        var courses = await CourseDataService.GetCoursesAsync();
+                        var coursesCard = await GetCoursesCard.CreateCardAttachmentAsync(courses);
+                        await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
+                        await stepContext.Context.SendActivityAsync("What else can I help you with?");
+                        return await stepContext.EndDialogAsync(null, cancellationToken);
+
+                    case "enrollCourse":
+                        return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), null, cancellationToken);
+
+                    case "viewEvents": // Handle the View Events action
+                        return await stepContext.BeginDialogAsync(nameof(GetEventsDialog), null, cancellationToken);
+
+                    default:
+                        await stepContext.Context.SendActivityAsync("I'm sorry, I didn't understand that action.");
+                        break;
+                }
+
+                return await stepContext.EndDialogAsync(null, cancellationToken);
+            }
+
+            // Process natural language input
+            if (_recognizer.IsConfigured && activity.Type == ActivityTypes.Message)
             {
                 try
                 {
@@ -86,10 +116,7 @@ namespace UniversityBot.Dialogs
                     switch (result.GetTopIntent().intent)
                     {
                         case UniversityBotModel.Intent.GetCourses:
-<<<<<<< HEAD
                             string category = result.Entities.GetCourseCategory();
-
-                            // Pass the category as options to the GetCoursesDialog
                             return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), category, cancellationToken);
 
                         case UniversityBotModel.Intent.EnrollStudent:
@@ -100,15 +127,9 @@ namespace UniversityBot.Dialogs
                                 CourseTitles = result.Entities.GetCourseNames()
                             };
                             return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), enrollDetails, cancellationToken);
-=======
-                            return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), null, cancellationToken);
->>>>>>> 42e90adbf6ec4c37c05b0f822e580a2bafe6f62a
 
                         case UniversityBotModel.Intent.GetEvents:
                             return await stepContext.BeginDialogAsync(nameof(GetEventsDialog), null, cancellationToken);
-
-                        case UniversityBotModel.Intent.EnrollStudent:
-                            return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), null, cancellationToken);
 
                         default:
                             await stepContext.Context.SendActivityAsync("I'm sorry, I didn't understand that. Can you try rephrasing?");
@@ -125,9 +146,10 @@ namespace UniversityBot.Dialogs
             return await stepContext.NextAsync(null, cancellationToken);
         }
 
+
         private async Task<DialogTurnResult> FinalStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            await stepContext.Context.SendActivityAsync("What can I help you with?", cancellationToken: cancellationToken);
+            await stepContext.Context.SendActivityAsync("What else can I help you with?", cancellationToken: cancellationToken);
             return await stepContext.EndDialogAsync(null, cancellationToken);
         }
     }

@@ -44,8 +44,15 @@ namespace CoreBot.Cards
                     {
                         Title = "Enroll in a Course",
                         Data = new { action = "enrollCourse" }
+                    },
+                         new AdaptiveSubmitAction
+                    {
+                        Title = "View the school events",
+                        Data = new { action = "viewEvents" }
                     }
-                    
+
+
+
                 }
             };
 
