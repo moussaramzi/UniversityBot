@@ -4,16 +4,12 @@ using Microsoft.Bot.Schema;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CoreBot.Cards;
-using CoreBot.DialogDetails;
 using CoreBot.Models;
-using UniversityBot.CognitiveModels;
-using CoreBot.Dialogs;
 using CoreBot;
+using UniversityBot.CognitiveModels;
 
 namespace UniversityBot.Dialogs
 {
@@ -81,30 +77,7 @@ namespace UniversityBot.Dialogs
         {
             var activity = stepContext.Context.Activity;
 
-            // Check for Adaptive Card actions
-            if (activity.Value is JObject actionData)
-            {
-                var action = actionData["action"]?.ToString();
-
-                switch (action)
-                {
-                    case "viewCourses":
-                        var courses = await CourseDataService.GetCoursesAsync();
-                        var coursesCard = await GetCoursesCard.CreateCardAttachmentAsync(courses);
-                        await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
-                        await stepContext.Context.SendActivityAsync("What else can I help you with?");
-                        return await stepContext.EndDialogAsync(null, cancellationToken);
-
-                    case "enrollCourse":
-                        return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), null, cancellationToken);
-
-                    default:
-                        return await stepContext.NextAsync(null, cancellationToken);
-                }
-            }
-
-            // Process natural language input
-            if (_recognizer.IsConfigured && activity.Type == ActivityTypes.Message)
+            if (activity.Type == ActivityTypes.Message && _recognizer.IsConfigured)
             {
                 try
                 {
@@ -113,40 +86,13 @@ namespace UniversityBot.Dialogs
                     switch (result.GetTopIntent().intent)
                     {
                         case UniversityBotModel.Intent.GetCourses:
-                            string category = result.Entities.GetCourseCategory();
-
-                            var coursesList = await CourseDataService.GetCoursesAsync();
-
-                            if (!string.IsNullOrEmpty(category))
-                            {
-                                // Filter by category if input matches the course category
-                                coursesList = coursesList.Where(course => course.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
-                            }
-
-                            // Create a card with the filtered list of courses
-                            var coursesCard = await GetCoursesCard.CreateCardAttachmentAsync(coursesList);
-
-                            // Send the courses card attachment to the user
-                            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
-
-                            // Ask if the user needs any further assistance
-                            await stepContext.Context.SendActivityAsync("Here are the available courses. What else can I help you with?");
-                            break;
-
-
-
-                        case UniversityBotModel.Intent.EnrollStudent:
-                            var enrollDetails = new EnrollStudentDetails
-                            {
-                                FirstName = result.Entities.GetFirstName(),
-                                LastName = result.Entities.GetLastName(),
-                                CourseTitles = result.Entities.GetCourseNames()
-                            };
-                            return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), enrollDetails, cancellationToken);
+                            return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), null, cancellationToken);
 
                         case UniversityBotModel.Intent.GetEvents:
-                            await stepContext.BeginDialogAsync(nameof(GetEventsDialog), null, cancellationToken);
-                            break;
+                            return await stepContext.BeginDialogAsync(nameof(GetEventsDialog), null, cancellationToken);
+
+                        case UniversityBotModel.Intent.EnrollStudent:
+                            return await stepContext.BeginDialogAsync(nameof(EnrollStudentDialog), null, cancellationToken);
 
                         default:
                             await stepContext.Context.SendActivityAsync("I'm sorry, I didn't understand that. Can you try rephrasing?");
