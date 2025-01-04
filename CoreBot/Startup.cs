@@ -1,7 +1,6 @@
 ﻿// Generated with CoreBot .NET Template version v4.22.0
 
 using CoreBot.Bots;
-using CoreBot.Dialogs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Bot.Builder;
