@@ -117,16 +117,14 @@ private async Task<DialogTurnResult> CollectFirstNameStepAsync(WaterfallStepCont
         var details = (EnrollStudentDetails)stepContext.Values["details"];
         details.LastName ??= stepContext.Result as string;
 
-        if (string.IsNullOrEmpty(details.StudentMail))
-        {
-            return await stepContext.PromptAsync("EmailPrompt", new PromptOptions
-            {
-                Prompt = MessageFactory.Text("What is your email address?")
-            }, cancellationToken);
-        }
+        // Generate email based on first name, last name, and a unique number
+        var uniqueNumber = new Random().Next(1000, 9999); // Generate a random 4-digit number
+        details.StudentMail = $"{details.FirstName.ToLower()}.{details.LastName.ToLower()}{uniqueNumber}@aiuniversity.student.com";
 
+        await stepContext.Context.SendActivityAsync($"Generated Email: {details.StudentMail}");
         return await stepContext.NextAsync(details.StudentMail, cancellationToken);
     }
+
 
     private async Task<DialogTurnResult> CollectCoursesStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
     {
