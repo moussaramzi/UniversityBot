@@ -1,5 +1,6 @@
 ﻿using Microsoft.Bot.Builder;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -57,7 +58,7 @@ namespace UniversityBot.CognitiveModels
         {
             public CluEntity[] Entities;
 
-            public string GetCapacity() => Entities.Where(e => e.Category == "capacity").FirstOrDefault()?.Text;
+            public string GetCapacity() => Entities.Where(e => e.Category == "Capacity").FirstOrDefault()?.Text;
             public string GetCourseCategory() => Entities.Where(e => e.Category == "courseCategory").FirstOrDefault()?.Text;
 
             // Update to return a list of course names
@@ -66,7 +67,11 @@ namespace UniversityBot.CognitiveModels
                 .Select(e => e.Text)
                 .ToList();
 
-            public string GetDate() => Entities.Where(e => e.Category == "Date").FirstOrDefault()?.Text;
+            public string GetDate()
+            {
+                return Entities.Where(e => e.Category == "Date").FirstOrDefault()?.Text;
+            }
+
             public string GetEventName() => Entities.Where(e => e.Category == "EventName").FirstOrDefault()?.Text;
             public string GetFirstName() => Entities.Where(e => e.Category == "Firstname").FirstOrDefault()?.Text;
             public string GetLastName() => Entities.Where(e => e.Category == "Lastname").FirstOrDefault()?.Text;

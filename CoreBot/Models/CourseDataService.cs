@@ -8,12 +8,12 @@ namespace CoreBot.Models
     {
         public static async Task<List<Course>> GetCoursesAsync()
         {
-            return await ApiService<List<Course>>.GetAsync($"Courses");
+            return await ApiService<List<Course>>.GetAsync($"courses");
         }
 
         public static async Task<Course> GetCourseByIdAsync(int id)
         {
-            return await ApiService<Course>.GetAsync($"Courses/{id}");
+            return await ApiService<Course>.GetAsync($"courses/{id}");
         }
     }
 }

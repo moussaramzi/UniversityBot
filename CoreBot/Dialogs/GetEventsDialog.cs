@@ -33,40 +33,56 @@ namespace CoreBot.Dialogs
 
                 if (eventDetail == null)
                 {
-                    await stepContext.Context.SendActivityAsync("Invalid event details provided.", cancellationToken: cancellationToken);
-                    return await stepContext.EndDialogAsync(null, cancellationToken);
+
+                    var events = await EventDataService.GetEventsAsync() ?? new List<Event>();
+                    if (!events.Any())
+                    {
+                        await stepContext.Context.SendActivityAsync("No events are currently planned.", cancellationToken: cancellationToken);
+                        return await stepContext.NextAsync(null, cancellationToken);
+                    }
+                    var card = GetEventsCard.CreateCardAttachment(events); // Ensure implementation
+                    if (card != null)
+                    {
+                        await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
+                    }
+
+                    return await stepContext.NextAsync(null, cancellationToken);
                 }
-
-                var events = await EventDataService.GetEventsAsync() ?? new List<Event>();
-
-                if (!string.IsNullOrWhiteSpace(eventDetail.eventName))
+                else
                 {
-                    events = events.FindAll(e => e.eventName.Equals(eventDetail.eventName, StringComparison.OrdinalIgnoreCase));
-                }
 
-                if (eventDetail.date != DateTime.MinValue)
-                {
-                    events = events.FindAll(e => e.date.Date == eventDetail.date.Date);
-                }
+                    var events = await EventDataService.GetEventsAsync() ?? new List<Event>();
+                    if (!string.IsNullOrWhiteSpace(eventDetail.eventName))
+                    {
+                        events = events.FindAll(e => e.eventName.Equals(eventDetail.eventName, StringComparison.OrdinalIgnoreCase));
+                    }
 
-                if (!string.IsNullOrWhiteSpace(eventDetail.time))
-                {
-                    events = events.FindAll(e => e.time.Equals(eventDetail.time, StringComparison.OrdinalIgnoreCase));
-                }
+                    if (eventDetail.date != DateTime.MinValue)
+                    {
+                        events = events.FindAll(e => e.date.Date == eventDetail.date.Date);
+                    }
 
-                if (!events.Any())
-                {
-                    await stepContext.Context.SendActivityAsync("No events are currently planned.", cancellationToken: cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(eventDetail.time))
+                    {
+                        events = events.FindAll(e => e.time.Equals(eventDetail.time, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    if (!events.Any())
+                    {
+                        await stepContext.Context.SendActivityAsync("No events are currently planned.", cancellationToken: cancellationToken);
+                        return await stepContext.NextAsync(null, cancellationToken);
+                    }
+
+                    var card = GetEventsCard.CreateCardAttachment(events); // Ensure implementation
+                    if (card != null)
+                    {
+                        await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
+                    }
+
                     return await stepContext.NextAsync(null, cancellationToken);
                 }
 
-                var card = GetEventsCard.CreateCardAttachment(events); // Ensure implementation
-                if (card != null)
-                {
-                    await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(card), cancellationToken);
-                }
-
-                return await stepContext.NextAsync(null, cancellationToken);
+                
             }
             catch (Exception ex)
             {
