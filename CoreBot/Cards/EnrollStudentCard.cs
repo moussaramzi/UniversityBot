@@ -30,19 +30,6 @@ public static class EnrollStudentCard
                     new AdaptiveFact("Courses", string.Join(", ", details.CourseTitles) ?? "No courses selected"),
                 }
             }
-        },
-            Actions = new List<AdaptiveAction>
-        {
-            new AdaptiveSubmitAction
-            {
-                Title = "Confirm",
-                Data = new { action = "confirmEnrollment" }
-            },
-            new AdaptiveSubmitAction
-            {
-                Title = "Cancel",
-                Data = new { action = "cancelEnrollment" }
-            }
         }
         };
 
