@@ -115,25 +115,8 @@ namespace UniversityBot.Dialogs
                         case UniversityBotModel.Intent.GetCourses:
                             string category = result.Entities.GetCourseCategory();
 
-                            var coursesList = await CourseDataService.GetCoursesAsync();
-
-                            if (!string.IsNullOrEmpty(category))
-                            {
-                                // Filter by category if input matches the course category
-                                coursesList = coursesList.Where(course => course.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
-                            }
-
-                            // Create a card with the filtered list of courses
-                            var coursesCard = await GetCoursesCard.CreateCardAttachmentAsync(coursesList);
-
-                            // Send the courses card attachment to the user
-                            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(coursesCard), cancellationToken);
-
-                            // Ask if the user needs any further assistance
-                            await stepContext.Context.SendActivityAsync("Here are the available courses. What else can I help you with?");
-                            break;
-
-
+                            // Pass the category as options to the GetCoursesDialog
+                            return await stepContext.BeginDialogAsync(nameof(GetCoursesDialog), category, cancellationToken);
 
                         case UniversityBotModel.Intent.EnrollStudent:
                             var enrollDetails = new EnrollStudentDetails
