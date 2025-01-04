@@ -32,7 +32,7 @@ namespace CoreBot.Bots
             Logger = logger;
         }
 
-        public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default(CancellationToken))
+        public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
         {
             await base.OnTurnAsync(turnContext, cancellationToken);
 
@@ -48,5 +48,27 @@ namespace CoreBot.Bots
             // Run the Dialog with the new message Activity.
             await Dialog.RunAsync(turnContext, ConversationState.CreateProperty<DialogState>("DialogState"), cancellationToken);
         }
+
+        protected override async Task OnConversationUpdateActivityAsync(ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken)
+        {
+            var membersAdded = turnContext.Activity.MembersAdded;
+
+            if (membersAdded != null)
+            {
+                foreach (var member in membersAdded)
+                {
+                    // Only send welcome card to the user (not the bot itself)
+                    if (member.Id != turnContext.Activity.Recipient.Id)
+                    {
+                        Logger.LogInformation("Sending welcome card.");
+
+                        // Create the welcome card
+                        var welcomeCard = CoreBot.Cards.WelcomeCard.CreateCardAttachment();
+                        await turnContext.SendActivityAsync(MessageFactory.Attachment(welcomeCard), cancellationToken);
+                    }
+                }
+            }
+        }
+
     }
 }
